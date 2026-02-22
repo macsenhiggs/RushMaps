@@ -13,7 +13,6 @@ library(patchwork)
 
 
 #pbp_default <- load_pbp(1999:2025)
-
 pbp_default <- load_pbp(2020:2025)
 
 get_rush_map <- function(startYear, endYear, teamName = NULL, playerName = NULL) {
@@ -38,6 +37,8 @@ get_rush_map <- function(startYear, endYear, teamName = NULL, playerName = NULL)
   } else {
     genericName <- "All RBs"
   }
+  
+  print(genericName)
   
   pbp <- pbp |>
     filter(
@@ -99,9 +100,9 @@ get_rush_map <- function(startYear, endYear, teamName = NULL, playerName = NULL)
   p <- ggplot(summary, aes(x = rlgAsNum, y = success_rate)) +
     theme_minimal(base_size = 13) +
     scale_linewidth_continuous(range = c(1, 3.5)) +
-    scale_y_continuous(labels = scales::percent, limits = c(0, ymax)) +
+    scale_y_continuous(name = "Success Rate", labels = scales::percent,
+                       breaks = c(0, 0.25, 0.4, 0.5, 0.75), limits = c(0, ymax)) +
     geom_segment(x = 0.5, xend = 7.5, y = 0.4, yend = 0.4, color = "black", linetype = "dashed") +
-    geom_segment(x = 1.75, xend = 2.25, y = ymax-0.05, yend = ymax-0.05, color = "black", linetype = "dashed") +
     geom_shadowtext(
       data = data.frame(
         x = c(1.5, 2.75, 4, 5.25, 6.5),
@@ -115,15 +116,15 @@ get_rush_map <- function(startYear, endYear, teamName = NULL, playerName = NULL)
       size = 10,
       fontface = "bold"
     ) +
-    geom_text(label = "40% SR", x = 1.25, y = ymax-0.05, color = "black", fontface = "bold") +
-    #labs(y = "Success Rate") + 
+    #geom_text(label = "40% SR", x = 1.25, y = ymax-0.05, color = "black", fontface = "bold") +
+    #geom_segment(x = 1.75, xend = 2.25, y = ymax-0.05, yend = ymax-0.05, color = "black", linetype = "dashed") +
     theme(
       axis.title.x = element_blank(),
       axis.text.x  = element_blank(),
       axis.ticks.x = element_blank(),
-      axis.title.y = element_blank(),
-      axis.text.y  = element_blank(),
-      axis.ticks.y = element_blank(),
+      #axis.title.y = element_blank(),
+      #axis.text.y  = element_blank(),
+      #axis.ticks.y = element_blank(),
       legend.position = "none"
     )
   
@@ -199,15 +200,15 @@ get_rush_map <- function(startYear, endYear, teamName = NULL, playerName = NULL)
     )
   }
   
-  
-  
   print(p)
   
-  return(p)
+  return(list(plot = p, data = summary))
+
   
 }
 
-get_rush_map(2025,2025, "LA", "K.Williams")
+get_rush_map(2025,2025, "PHI", "S.Barkley")
+results <- get_rush_map(2024,2024, "PHI")
 
 get_carry_leaders <- function(startYear, endYear) {
   carryLeaders <- pbp_default |>
@@ -234,24 +235,30 @@ get_carry_leaders <- function(startYear, endYear) {
   return(carryLeaders)
 }
 
-get_rush_map(2020, 2025)
-teams <- load_teams()
+teams <- load_teams() |> arrange(team_division)
 startYear <- 2025
 endYear <- 2025
+
+leagueData <- tibble()
 
 for (i in seq_len(nrow(teams))) {
   teamName <- teams$team_abbr[i]
   
-  teamPlot <- get_rush_map(startYear, endYear, teamName)
+  results <- get_rush_map(startYear, endYear, teamName)
+  teamPlot <- results$plot
+  teamData <- results$data |>
+    mutate(team = teamName)
+  
+  leagueData <- rbind(leagueData, teamData)
   
   fileName <- paste0(teamName, "-rushing-map-", startYear, "-", endYear, ".png")
   
-  #ggsave(filename = fileName, plot = teamPlot, width = 6, height = 4, dpi = 300)
+  ggsave(filename = fileName, plot = teamPlot, width = 6, height = 4, dpi = 300)
   
   if(i == 1) plotGrid <- teamPlot else plotGrid <- plotGrid + teamPlot
 }
 
-ggsave(filename = "rushmaps2025.png", plot = plotGrid, width = 30, height = 16, dpi = 300)
+ggsave(filename = "rushmaps2025.png", plot = plotGrid, width = 30, height = 16, dpi = 600)
 
 players <- load_players()
 
@@ -270,17 +277,5 @@ for (i in seq_len(nrow(carryLeaders2025))) {
 }
 
 ggsave(filename = "2025RushLeaderMaps.png", plot = plotGrid, width = 8, height = 16, dpi = 500)
-
-
-#get_rush_map(2024, 2024, "DET")
-#get_rush_map(2025, 2025, "DET")
-
-
-
-
-#Title: paste0(genericName, ": Success Rate by Run Location and Gap")
-#Subtitle: paste0("RB handoffs only, ", startYear, "-", endYear)
-#Caption: "data: nflfastR"
-
 
 
